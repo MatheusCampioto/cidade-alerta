@@ -1,0 +1,5 @@
+.env
+node_modules/
+.expo/
+example/
+src_backup/
