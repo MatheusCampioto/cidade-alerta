@@ -1,9 +1,35 @@
 import { useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { getOccurrences } from '../services/occurrenceService';
 
 export default function HomeScreen() {
   const router = useRouter();
+  const [stats, setStats] = useState(null);
+  const [loadingStats, setLoadingStats] = useState(true);
+
+  useEffect(() => {
+    loadStats();
+  }, []);
+
+  async function loadStats() {
+    try {
+      const data = await getOccurrences();
+      const total = data.length;
+      const novo = data.filter((o) => o.status === 'Novo').length;
+      const emAndamento = data.filter(
+        (o) => o.status === 'Em Análise' || o.status === 'Em Andamento'
+      ).length;
+      const resolvido = data.filter((o) => o.status === 'Resolvido').length;
+      const alta = data.filter((o) => o.gravidade === 'Alta').length;
+      setStats({ total, novo, emAndamento, resolvido, alta });
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoadingStats(false);
+    }
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -18,6 +44,34 @@ export default function HomeScreen() {
       <View style={styles.divider} />
 
       <View style={styles.body}>
+        {!loadingStats && stats && stats.total > 0 && (
+          <>
+            <Text style={styles.sectionLabel}>PAINEL DE OCORRÊNCIAS</Text>
+            <View style={styles.statsGrid}>
+              <View style={[styles.statCard, { borderLeftColor: '#1565c0' }]}>
+                <Text style={styles.statNumber}>{stats.total}</Text>
+                <Text style={styles.statLabel}>Total</Text>
+              </View>
+              <View style={[styles.statCard, { borderLeftColor: '#f57f17' }]}>
+                <Text style={[styles.statNumber, { color: '#f57f17' }]}>{stats.emAndamento}</Text>
+                <Text style={styles.statLabel}>Em Andamento</Text>
+              </View>
+              <View style={[styles.statCard, { borderLeftColor: '#2e7d32' }]}>
+                <Text style={[styles.statNumber, { color: '#2e7d32' }]}>{stats.resolvido}</Text>
+                <Text style={styles.statLabel}>Resolvidos</Text>
+              </View>
+              <View style={[styles.statCard, { borderLeftColor: '#c62828' }]}>
+                <Text style={[styles.statNumber, { color: '#c62828' }]}>{stats.alta}</Text>
+                <Text style={styles.statLabel}>Alta Gravidade</Text>
+              </View>
+            </View>
+          </>
+        )}
+
+        {loadingStats && (
+          <ActivityIndicator size="small" color="#1565c0" style={{ marginBottom: 16 }} />
+        )}
+
         <Text style={styles.sectionLabel}>SERVIÇOS DISPONÍVEIS</Text>
 
         <TouchableOpacity
@@ -179,4 +233,31 @@ const styles = StyleSheet.create({
     color: '#6a8aaa',
     marginTop: 4,
   },
+
+  statsGrid: {
+  flexDirection: 'row',
+  flexWrap: 'wrap',
+  gap: 8,
+  marginBottom: 16,
+},
+statCard: {
+  backgroundColor: '#ffffff',
+  borderRadius: 8,
+  padding: 12,
+  borderLeftWidth: 4,
+  elevation: 2,
+  width: '47%',
+  alignItems: 'center',
+},
+statNumber: {
+  fontSize: 28,
+  fontWeight: 'bold',
+  color: '#0d2d6e',
+},
+statLabel: {
+  fontSize: 11,
+  color: '#6b7a8d',
+  marginTop: 2,
+  textAlign: 'center',
+},
 });
