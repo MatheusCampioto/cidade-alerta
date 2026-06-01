@@ -1,56 +1,187 @@
-# Welcome to your Expo app 👋
+# 🏛️ CidadeAlerta
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+> Plataforma Móvel de Fiscalização Urbana Cidadã com Inteligência Artificial
 
-## Get started
+[![React Native](https://img.shields.io/badge/React_Native-Expo-blue)](https://expo.dev)
+[![Firebase](https://img.shields.io/badge/Firebase-Firestore-orange)](https://firebase.google.com)
+[![Gemini AI](https://img.shields.io/badge/IA-Gemini_API-green)](https://ai.google.dev)
+[![ODS 11](https://img.shields.io/badge/ODS-11_Cidades_Sustentáveis-gold)](https://odsbrasil.gov.br)
 
-1. Install dependencies
+---
 
-   ```bash
-   npm install
-   ```
+## 📋 Sobre o Projeto
 
-2. Start the app
+O **CidadeAlerta** é uma plataforma móvel que permite ao cidadão registrar ocorrências urbanas (buracos, iluminação pública quebrada, descarte irregular de lixo, alagamentos, árvores em risco) com foto e GPS.
 
-   ```bash
-   npx expo start
-   ```
+A aplicação utiliza **Inteligência Artificial (Gemini API)** para classificar automaticamente o tipo e a gravidade do problema, e exibe os dados em um mapa colaborativo acessível à comunidade e gestores públicos.
 
-In the output, you'll find options to open the app in a
+Desenvolvido como trabalho acadêmico da disciplina **ESOFT — Engenharia de Software** (7º semestre), **UniCesumar 2026.1**, alinhado à **ODS 11 da ONU** — Cidades e Comunidades Sustentáveis.
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+---
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## 🎯 Funcionalidades
 
-## Get a fresh project
+- 📷 Registro de ocorrências com câmera ou galeria
+- 🤖 Classificação automática por IA (categoria + gravidade)
+- 📍 Captura de localização GPS
+- 🗺️ Mapa interativo com pins coloridos por gravidade
+- 🔄 Ciclo de vida modelado como Autômato Finito Determinístico
+- 📋 Histórico de tramitação de cada ocorrência
+- ☁️ Persistência em tempo real com Firebase Firestore
 
-When you're ready, run:
+---
 
-```bash
-npm run reset-project
+## 🤖 Inteligência Artificial
+
+A classificação usa a **Gemini 1.5 Flash API** (Google). Ao fotografar um problema, o app envia a imagem em base64 para o Gemini, que retorna:
+
+```json
+{
+  "categoria": "Buraco na via",
+  "gravidade": "Alta",
+  "descricao": "Buraco profundo no asfalto em via movimentada"
+}
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Categorias suportadas:
+- Buraco na via
+- Iluminação pública
+- Descarte irregular de lixo
+- Alagamento
+- Árvore em risco
+- Calçada danificada
+- Outro
 
-### Other setup steps
+---
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+## 🔄 Modelagem de Estados (Autômato Finito)
 
-## Learn more
+O ciclo de vida de cada ocorrência é modelado como um **Autômato Finito Determinístico (AFD)**:
 
-To learn more about developing your project with Expo, look at the following resources:
+```
+NOVO → EM ANÁLISE → EM ANDAMENTO → RESOLVIDO → ARQUIVADO
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+Transições válidas:
+| Estado atual | Pode ir para |
+|---|---|
+| Novo | Em Análise, Arquivado |
+| Em Análise | Em Andamento, Arquivado |
+| Em Andamento | Resolvido, Arquivado |
+| Resolvido | Arquivado |
+| Arquivado | — (estado final) |
 
-## Join the community
+---
 
-Join our community of developers creating universal apps.
+## 🛠️ Tecnologias
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+| Tecnologia | Uso |
+|---|---|
+| React Native + Expo | App mobile multiplataforma |
+| Expo Router | Navegação por sistema de arquivos |
+| Firebase Firestore | Banco de dados em tempo real |
+| Gemini API (Google) | Classificação de imagens com IA |
+| Expo Camera | Captura de fotos |
+| Expo Location | Captura de GPS |
+| Expo Image Picker | Seleção da galeria |
+| React Native Maps | Mapa interativo |
+
+---
+
+## 🚀 Como Rodar
+
+### Pré-requisitos
+- Node.js 18+
+- Expo CLI
+- Conta Firebase
+- Chave da API Gemini
+
+### Instalação
+
+```bash
+# Clone o repositório
+git clone https://github.com/MatheusCampioto/cidade-alerta.git
+cd cidade-alerta
+
+# Instale as dependências
+npm install
+
+# Crie o arquivo .env na raiz
+cp .env.example .env
+# Preencha as variáveis com suas chaves
+```
+
+### Variáveis de ambiente (.env)
+
+```
+EXPO_PUBLIC_FIREBASE_API_KEY=sua_chave
+EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=seu_projeto.firebaseapp.com
+EXPO_PUBLIC_FIREBASE_PROJECT_ID=seu_projeto
+EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=seu_id
+EXPO_PUBLIC_FIREBASE_APP_ID=seu_app_id
+EXPO_PUBLIC_GEMINI_API_KEY=sua_chave_gemini
+```
+
+### Executar
+
+```bash
+# Iniciar servidor de desenvolvimento
+npx expo start
+
+# Android (emulador ou dispositivo)
+npx expo start --android
+
+# Web (sem câmera e mapa)
+npx expo start --web
+```
+
+---
+
+## 📁 Estrutura do Projeto
+
+```
+cidade-alerta/
+├── src/
+│   ├── app/                    # Rotas (Expo Router)
+│   │   ├── _layout.tsx         # Layout global e navegação
+│   │   ├── index.tsx           # Tela inicial
+│   │   ├── register.tsx        # Registrar ocorrência
+│   │   ├── list.tsx            # Listar ocorrências
+│   │   ├── detail.tsx          # Detalhe da ocorrência
+│   │   └── map.tsx             # Mapa de ocorrências
+│   ├── screens/                # Componentes de tela
+│   │   ├── HomeScreen.jsx
+│   │   ├── RegisterScreen.jsx
+│   │   ├── ListScreen.jsx
+│   │   ├── DetailScreen.jsx
+│   │   └── MapScreen.jsx
+│   ├── services/               # Integrações externas
+│   │   ├── firebase.js         # Configuração Firebase
+│   │   ├── gemini.js           # Integração Gemini API
+│   │   └── occurrenceService.js # CRUD de ocorrências
+│   └── models/
+│       └── occurrenceStateMachine.js  # Autômato Finito
+├── .env                        # Variáveis de ambiente (não versionado)
+└── app.json                    # Configuração Expo
+```
+
+---
+
+## 🌍 ODS 11 — Cidades e Comunidades Sustentáveis
+
+O CidadeAlerta contribui diretamente para a **Meta 11.6** da ODS 11:
+
+> *"Até 2030, reduzir o impacto ambiental negativo per capita das cidades, inclusive prestando especial atenção à qualidade do ar, gestão de resíduos municipais e outros."*
+
+Ao empoderar o cidadão com uma ferramenta digital de fiscalização, o app aproxima a comunidade dos gestores públicos, acelerando a resolução de problemas urbanos.
+
+---
+
+## 👨‍💻 Autores
+
+| Nome | RA |
+|---|---|
+| Matheus Felipe Campioto Catenacci | 22014137-2 |
+| André Felipe Ferrari de Azevedo | 22120196-2 |
+
+**UniCesumar — Engenharia de Software — 7º Semestre — 2026.1**
