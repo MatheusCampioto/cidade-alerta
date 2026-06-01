@@ -1,11 +1,6 @@
 import { useRouter } from 'expo-router';
-import {
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -58,21 +53,20 @@ export default function HomeScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity
-  style={[styles.card, { borderLeftColor: '#2e7d32' }]}
-  onPress={() => router.push('/map')}
->
-  <View style={[styles.cardIcon, { backgroundColor: '#e8f5e9' }]}>
-    <Text style={styles.cardIconText}>🗺️</Text>
-  </View>
-  <View style={styles.cardContent}>
-    <Text style={styles.cardTitle}>Mapa de Ocorrências</Text>
-    <Text style={styles.cardDesc}>
-      Visualize os problemas registrados no mapa da cidade
-    </Text>
-  </View>
-  <Text style={styles.cardArrow}>›</Text>
-</TouchableOpacity>
-
+          style={[styles.card, { borderLeftColor: '#2e7d32' }]}
+          onPress={() => router.push('/map')}
+        >
+          <View style={[styles.cardIcon, { backgroundColor: '#e8f5e9' }]}>
+            <Text style={styles.cardIconText}>🗺️</Text>
+          </View>
+          <View style={styles.cardContent}>
+            <Text style={styles.cardTitle}>Mapa de Ocorrências</Text>
+            <Text style={styles.cardDesc}>
+              Visualize os problemas registrados no mapa da cidade
+            </Text>
+          </View>
+          <Text style={styles.cardArrow}>›</Text>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.footer}>
@@ -138,10 +132,6 @@ const styles = StyleSheet.create({
     borderLeftWidth: 4,
     borderLeftColor: '#1565c0',
     elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
   },
   cardIcon: {
     width: 48,

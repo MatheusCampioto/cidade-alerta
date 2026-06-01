@@ -1,21 +1,20 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import {
-    Alert,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { getNextStates } from '../models/occurrenceStateMachine';
 import { updateOccurrenceStatus } from '../services/occurrenceService';
 
 export default function DetailScreen() {
   const { occurrence: occurrenceParam } = useLocalSearchParams();
   const occurrence = JSON.parse(occurrenceParam);
-  const router = useRouter();
   const [currentStatus, setCurrentStatus] = useState(occurrence.status);
   const [loading, setLoading] = useState(false);
 
@@ -37,7 +36,6 @@ export default function DetailScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll}>
-
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>DADOS DA OCORRÊNCIA</Text>
           <View style={styles.card}>
@@ -66,12 +64,7 @@ export default function DetailScreen() {
           <Text style={styles.sectionLabel}>STATUS ATUAL</Text>
           <View style={styles.card}>
             <View style={styles.statusRow}>
-              <View
-                style={[
-                  styles.statusDot,
-                  { backgroundColor: statusColor(currentStatus) },
-                ]}
-              />
+              <View style={[styles.statusDot, { backgroundColor: statusColor(currentStatus) }]} />
               <Text style={styles.statusValue}>{currentStatus}</Text>
             </View>
           </View>
@@ -83,12 +76,7 @@ export default function DetailScreen() {
             <View style={styles.card}>
               {occurrence.statusHistory.map((item, index) => (
                 <View key={index} style={styles.historyItem}>
-                  <View
-                    style={[
-                      styles.historyDot,
-                      { backgroundColor: statusColor(item.status) },
-                    ]}
-                  />
+                  <View style={[styles.historyDot, { backgroundColor: statusColor(item.status) }]} />
                   <View style={styles.historyContent}>
                     <Text style={styles.historyStatus}>{item.status}</Text>
                     <Text style={styles.historyDate}>
@@ -111,9 +99,7 @@ export default function DetailScreen() {
                 onPress={() => handleTransition(state)}
                 disabled={loading}
               >
-                <Text style={styles.actionButtonText}>
-                  Mover para: {state}
-                </Text>
+                <Text style={styles.actionButtonText}>Mover para: {state}</Text>
                 <Text style={styles.actionArrow}>›</Text>
               </TouchableOpacity>
             ))}
@@ -127,7 +113,6 @@ export default function DetailScreen() {
             </Text>
           </View>
         )}
-
       </ScrollView>
     </SafeAreaView>
   );
@@ -137,9 +122,7 @@ function Row({ label, value, valueColor }) {
   return (
     <View style={styles.row}>
       <Text style={styles.rowLabel}>{label}</Text>
-      <Text style={[styles.rowValue, valueColor && { color: valueColor }]}>
-        {value}
-      </Text>
+      <Text style={[styles.rowValue, valueColor && { color: valueColor }]}>{value}</Text>
     </View>
   );
 }
@@ -187,10 +170,6 @@ const styles = StyleSheet.create({
     borderLeftWidth: 4,
     borderLeftColor: '#1565c0',
     elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
   },
   row: {
     flexDirection: 'row',

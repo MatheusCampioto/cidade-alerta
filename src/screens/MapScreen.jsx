@@ -1,14 +1,14 @@
 import * as Location from 'expo-location';
 import { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Platform,
-    SafeAreaView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { getOccurrences } from '../services/occurrenceService';
 
 let MapView, Marker, Callout;
