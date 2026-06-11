@@ -23,29 +23,68 @@ export default function RegisterScreen() {
   const [classification, setClassification] = useState(null);
   const [location, setLocation] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [mode, setMode] = useState('options'); // options | camera | preview
+  const [mode, setMode] = useState('options');
+
   const cameraRef = useRef(null);
   const router = useRouter();
 
   async function getLocation() {
-    const { status } = await Location.requestForegroundPermissionsAsync();
-    if (status === 'granted') {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+
+      if (status !== 'granted') {
+        console.log('GPS negado pelo usuário. Continuando sem localização.');
+        return null;
+      }
+
       const loc = await Location.getCurrentPositionAsync({});
       return loc.coords;
+    } catch (error) {
+      console.log('GPS indisponível. Continuando sem localização:', error);
+      return null;
     }
-    return null;
   }
 
-  async function analyzePhoto(base64) {
+  async function analyzePhoto(base64, mimeType = 'image/jpeg') {
     setLoading(true);
+
     try {
+      console.log('Iniciando análise da imagem...');
+      console.log('Base64 existe?', !!base64);
+      console.log('MimeType:', mimeType);
+
+      const result = await classifyOccurrence(base64, mimeType);
+
+      console.log('Resultado retornado pela IA:', result);
+
+      setClassification({
+        categoria: result?.categoria || 'Outro',
+        gravidade: result?.gravidade || 'Média',
+        descricao:
+          result?.descricao || 'Não foi possível classificar automaticamente',
+      });
+
       const coords = await getLocation();
       setLocation(coords);
-      const result = await classifyOccurrence(base64);
-      setClassification(result);
+
       setMode('preview');
     } catch (error) {
-      Alert.alert('Erro', 'Não foi possível analisar a imagem');
+      console.error('Erro ao analisar a foto no componente:', error);
+
+      setClassification({
+        categoria: 'Outro',
+        gravidade: 'Média',
+        descricao: 'Não foi possível classificar automaticamente',
+      });
+
+      const coords = await getLocation();
+      setLocation(coords);
+
+      setMode('preview');
+
+      alert(
+        'Não foi possível processar via IA. Os dados foram preenchidos de forma padrão para permitir o envio.'
+      );
     } finally {
       setLoading(false);
     }
@@ -53,56 +92,136 @@ export default function RegisterScreen() {
 
   async function takePicture() {
     if (!cameraRef.current) return;
+
     setLoading(true);
+
     try {
       const pic = await cameraRef.current.takePictureAsync({
         base64: true,
-        quality: 0.5,
+        quality: 0.3,
       });
-      setPhoto(pic);
-      await analyzePhoto(pic.base64);
+
+      if (!pic?.base64) {
+        alert('A foto não gerou o código base64 necessário.');
+        setLoading(false);
+        return;
+      }
+
+      setPhoto({
+        uri: pic.uri,
+        base64: pic.base64,
+        mimeType: 'image/jpeg',
+      });
+
+      await analyzePhoto(pic.base64, 'image/jpeg');
     } catch (error) {
+      console.error('Erro ao tirar foto:', error);
       Alert.alert('Erro', 'Não foi possível tirar a foto');
       setLoading(false);
     }
   }
 
   async function pickFromGallery() {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permissão negada', 'Precisamos de acesso à galeria');
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaType.IMAGE,
-      base64: true,
-      quality: 0.5,
-    });
-    if (!result.canceled) {
+    try {
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (status !== 'granted') {
+        alert('Permissão negada: precisamos de acesso à galeria.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        base64: true,
+        quality: 0.3,
+      });
+
+      console.log('Resultado do Picker:', {
+        canceled: result.canceled,
+        temAssets: !!result.assets,
+        quantidadeAssets: result.assets?.length || 0,
+      });
+
+      if (result.canceled) {
+        console.log('Usuário cancelou a escolha da imagem.');
+        return;
+      }
+
       const asset = result.assets[0];
-      setPhoto({ uri: asset.uri, base64: asset.base64 });
-      await analyzePhoto(asset.base64);
+
+      if (!asset?.base64) {
+        alert(
+          'Aviso: a imagem não gerou o código base64 necessário para o Gemini.'
+        );
+        return;
+      }
+
+      const mimeType = asset.mimeType || 'image/jpeg';
+
+      setPhoto({
+        uri: asset.uri,
+        base64: asset.base64,
+        mimeType,
+      });
+
+      console.log('Chamando análise da imagem...');
+      await analyzePhoto(asset.base64, mimeType);
+    } catch (error) {
+      console.error('Erro ao escolher imagem da galeria:', error);
+      alert('Erro ao escolher imagem: ' + (error?.message || 'erro desconhecido'));
     }
   }
 
   async function handleSave() {
-    if (!photo || !classification) return;
+    console.log('CLICOU NO BOTÃO CONFIRMAR');
+
+    if (!photo) {
+      alert('Erro: nenhuma foto foi selecionada.');
+      return;
+    }
+
+    if (!classification) {
+      alert('Erro: a imagem ainda não foi classificada.');
+      return;
+    }
+
     setLoading(true);
+
     try {
-      await saveOccurrence({
-        categoria: classification.categoria,
-        gravidade: classification.gravidade,
-        descricao: classification.descricao,
+      const dadosParaSalvar = {
+        categoria: classification.categoria || 'Outro',
+        gravidade: classification.gravidade || 'Média',
+        descricao: classification.descricao || 'Sem descrição',
         latitude: location?.latitude || null,
         longitude: location?.longitude || null,
+
+        imageDataUrl: photo?.base64
+          ? `data:${photo?.mimeType || 'image/jpeg'};base64,${photo.base64}`
+          : null,
+      };
+
+      console.log('Dados enviados para salvar no Firebase:', {
+        ...dadosParaSalvar,
+        imageDataUrl: dadosParaSalvar.imageDataUrl ? 'Imagem salva em base64' : null,
       });
-      Alert.alert('Sucesso!', 'Ocorrência registrada com sucesso.', [
-        { text: 'OK', onPress: () => router.push('/list') },
-      ]);
-    } catch (error) {
-      Alert.alert('Erro', 'Não foi possível salvar a ocorrência');
-    } finally {
+
+      const idSalvo = await saveOccurrence(dadosParaSalvar);
+
+      console.log('Ocorrência salva com sucesso. ID:', idSalvo);
+
       setLoading(false);
+      router.replace('/list');
+    } catch (error) {
+      console.error('ERRO REAL AO SALVAR OCORRÊNCIA:', error);
+
+      setLoading(false);
+
+      alert(
+        'Erro ao salvar ocorrência: ' +
+          (error?.message || 'erro desconhecido. Veja o console.')
+      );
     }
   }
 
@@ -113,55 +232,75 @@ export default function RegisterScreen() {
     setMode('options');
   }
 
-  // TELA DE OPÇÕES
+  async function openCamera() {
+    try {
+      if (permission?.granted) {
+        setMode('camera');
+        return;
+      }
+
+      const result = await requestPermission();
+
+      if (result?.granted) {
+        setMode('camera');
+      } else {
+        alert('Permissão da câmera negada.');
+      }
+    } catch (error) {
+      console.error('Erro ao pedir permissão da câmera:', error);
+      alert('Erro ao abrir câmera.');
+    }
+  }
+
   if (mode === 'options') {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>📋 Nova Ocorrência</Text>
-          <Text style={styles.headerSubtitle}>
-            Escolha como deseja registrar o problema
-          </Text>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButton}
+          >
+            <Text style={styles.backButtonText}>‹</Text>
+          </TouchableOpacity>
+
+          <View>
+            <Text style={styles.headerTitle}>📋 Nova Ocorrência</Text>
+            <Text style={styles.headerSubtitle}>
+              Escolha como deseja registrar o problema
+            </Text>
+          </View>
         </View>
 
         <View style={styles.body}>
           <Text style={styles.sectionLabel}>MÉTODO DE REGISTRO</Text>
 
-          <TouchableOpacity
-            style={styles.optionCard}
-            onPress={() => {
-              if (!permission?.granted) {
-                requestPermission();
-              } else {
-                setMode('camera');
-              }
-            }}
-          >
+          <TouchableOpacity style={styles.optionCard} onPress={openCamera}>
             <View style={styles.optionIcon}>
               <Text style={styles.optionIconText}>📷</Text>
             </View>
+
             <View style={styles.optionContent}>
               <Text style={styles.optionTitle}>Usar Câmera</Text>
               <Text style={styles.optionDesc}>
                 Fotografe o problema diretamente com a câmera
               </Text>
             </View>
+
             <Text style={styles.optionArrow}>›</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.optionCard}
-            onPress={pickFromGallery}
-          >
+          <TouchableOpacity style={styles.optionCard} onPress={pickFromGallery}>
             <View style={[styles.optionIcon, { backgroundColor: '#e8f5e9' }]}>
               <Text style={styles.optionIconText}>🖼️</Text>
             </View>
+
             <View style={styles.optionContent}>
               <Text style={styles.optionTitle}>Escolher da Galeria</Text>
               <Text style={styles.optionDesc}>
                 Selecione uma foto já existente no dispositivo
               </Text>
             </View>
+
             <Text style={styles.optionArrow}>›</Text>
           </TouchableOpacity>
         </View>
@@ -176,7 +315,6 @@ export default function RegisterScreen() {
     );
   }
 
-  // TELA DA CÂMERA
   if (mode === 'camera') {
     return (
       <View style={styles.cameraContainer}>
@@ -188,6 +326,7 @@ export default function RegisterScreen() {
             >
               <Text style={styles.cancelText}>✕ Cancelar</Text>
             </TouchableOpacity>
+
             <TouchableOpacity
               style={styles.captureButton}
               onPress={takePicture}
@@ -205,34 +344,48 @@ export default function RegisterScreen() {
     );
   }
 
-  // TELA DE PREVIEW
   return (
     <ScrollView contentContainerStyle={styles.previewContainer}>
-      <Image source={{ uri: photo.uri }} style={styles.preview} />
+      <View style={styles.previewHeader}>
+        <TouchableOpacity onPress={handleRetake}>
+          <Text style={styles.previewBackText}>‹</Text>
+        </TouchableOpacity>
+
+        <Text style={styles.previewHeaderTitle}>Nova Ocorrência</Text>
+      </View>
+
+      {photo?.uri && <Image source={{ uri: photo.uri }} style={styles.preview} />}
 
       {loading && (
         <View style={styles.loadingBox}>
           <ActivityIndicator size="large" color="#0d2d6e" />
-          <Text style={styles.loadingTextDark}>Analisando com IA...</Text>
+          <Text style={styles.loadingTextDark}>Salvando ocorrência...</Text>
         </View>
       )}
 
       {classification && !loading && (
         <>
           <Text style={styles.sectionLabel}>RESULTADO DA ANÁLISE — IA</Text>
+
           <View style={styles.resultCard}>
             <ResultRow label="Categoria" value={classification.categoria} />
+
             <View style={styles.divider} />
+
             <ResultRow
               label="Gravidade"
               value={classification.gravidade}
               valueColor={gravityColor(classification.gravidade)}
             />
+
             <View style={styles.divider} />
+
             <ResultRow label="Descrição" value={classification.descricao} />
+
             {location && (
               <>
                 <View style={styles.divider} />
+
                 <ResultRow
                   label="Localização"
                   value={`${location.latitude.toFixed(5)}, ${location.longitude.toFixed(5)}`}
@@ -245,9 +398,11 @@ export default function RegisterScreen() {
             <TouchableOpacity
               style={[styles.actionButton, styles.buttonSecondary]}
               onPress={handleRetake}
+              disabled={loading}
             >
               <Text style={styles.actionButtonText}>🔄 Refazer</Text>
             </TouchableOpacity>
+
             <TouchableOpacity
               style={styles.actionButton}
               onPress={handleSave}
@@ -286,8 +441,22 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: '#0d2d6e',
-    paddingVertical: 24,
-    paddingHorizontal: 24,
+    paddingVertical: 18,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  backButton: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backButtonText: {
+    fontSize: 32,
+    color: '#ffffff',
+    lineHeight: 32,
   },
   headerTitle: {
     fontSize: 20,
@@ -415,6 +584,28 @@ const styles = StyleSheet.create({
   previewContainer: {
     padding: 16,
     backgroundColor: '#f0f2f5',
+    flexGrow: 1,
+  },
+  previewHeader: {
+    backgroundColor: '#0d2d6e',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    marginHorizontal: -16,
+    marginTop: -16,
+    marginBottom: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  previewBackText: {
+    fontSize: 32,
+    color: '#ffffff',
+    lineHeight: 32,
+  },
+  previewHeaderTitle: {
+    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
   preview: {
     width: '100%',
